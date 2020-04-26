@@ -1,0 +1,48 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>chessboardjs.com &raquo; Homepage</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="shortcut icon" href="img/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600|Roboto+Mono">
+    <link rel="stylesheet" href="css/website.css" />
+    <link rel="stylesheet" href="css/chessboard-1.0.0.css" crossorigin="anonymous">
+</head>
+
+<body class="homepage">
+
+<div id="myBoard" style="width: 400px"></div>
+<button id="headBtn">&lt;&lt;</button>
+<button id="prevBtn">&lt;</button>
+<button id="nextBtn">&gt;</button>
+<button id="tailBtn">&gt;&gt;</button>
+
+<script src="js/jquery-3.4.1.min.js"></script>
+<script src="js/prettify.min.js"></script>
+<script src="js/chessboard-1.0.0.js" crossorigin="anonymous"></script>
+<script>
+function init () {
+  var ruyLopez = 'r4r2/p1pb1kPp/b1p2Ppp/3pP2P/1P3P2/3N1Q1p/PPPp1PPP/R4K1R/QPPqbbnnn w KQ - 0 1';
+  var board = Chessboard('myBoard', 
+	        { position: ruyLopez,
+		  draggable: true,
+		  dropOffBoard: 'trash',
+ 	   	  sparePieces: true,
+		  
+		});
+
+  $('#startBtn').on('click', board.start);
+  $('#clearBtn').on('click', board.clear);
+  $('#tailBtn').on('click', board.tail);
+  $('#headBtn').on('click', board.head);
+  $('#prevBtn').on('click', board.prev);
+  $('#nextBtn').on('click', board.next);
+}
+ 
+
+  $(document).ready(init)
+</script>
+</body>
+</html>
