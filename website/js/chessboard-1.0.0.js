@@ -7,10 +7,11 @@
 
 // start anonymous scope
 class PositionNode {
-  constructor(position) {
+  constructor(position, fen) {
     this.next = null;
     this.prev = null;
     this.position = position;
+    this.fen = fen;
   }
 
   setNext(position) {
@@ -25,6 +26,10 @@ class PositionNode {
     return this.position;
   }
 
+  getFen() {
+    return this.fen;
+  }
+
   getNext() {
     return this.next;
   }
@@ -37,8 +42,8 @@ class PositionNode {
 }
 
 class PositionList {
-  constructor(position) {
-    var n = new PositionNode(position);
+  constructor(position, fen) {
+    var n = new PositionNode(position, fen);
     this.tail = n;
     this.head = n;
     this.current = n;
@@ -70,11 +75,13 @@ class PositionList {
     return this.current;
   }
 
-  insert(position) {
+  insert(position, fen) {
     console.log("insert");
     console.log(position);
+    console.log(fen);
+    console.log("--------------------------");
     var current = this.current;
-    var node = new PositionNode(position);
+    var node = new PositionNode(position, fen);
     current.setNext(node);
     node.setPrev(current);
     this.current = node;
@@ -304,15 +311,13 @@ class PositionList {
     // cut off any move, castling, etc info from the end
     // we're only interested in position information
     fen = fen.replace(/ .+$/, '')
-
     // expand the empty square numbers to just 1s
     fen = expandFenEmptySquares(fen)
-    console.log(fen);
     // FEN should be 8 sections separated by slashes
-    var chunks = fen.split('/')
-
+    var chunks = fen.split(/[\/\[\]]/)
+    console.log(chunks.length);
     //9 sections for bfen
-    if (chunks.length !== 9) return false
+    if (chunks.length < 9) return false
 
     // check each section
     for (var i = 0; i < 8; i++) {
@@ -410,6 +415,7 @@ class PositionList {
   // returns false if the FEN string is invalid
   function fenToObj (config) {
     var fen = config.position
+    console.log("fen = " + fen);
     console.log("fenToObj: " + fen);
     var chunk = validFen(fen);
     if (!chunk) return false
@@ -418,7 +424,6 @@ class PositionList {
     // cut off any move, castling, etc info from the end
     // we're only interested in position information
     fen = fen.replace(/ .+$/, '')
-    console.log(fen);
     var rows = fen.split('/')
     var position = {}
 
@@ -763,6 +768,7 @@ class PositionList {
     var boardBorderSize = 2
     var currentOrientation = 'white'
     var currentPosition = {}
+    var currentFen = null;
     var draggedPiece = null
     var draggedPieceLocation = null
     var draggedPieceSource = null
@@ -818,6 +824,7 @@ class PositionList {
     function setInitialState () {
       currentOrientation = config.orientation
       console.log("setInitialState()");
+      currentFen = config.position;
       // make sure position is valid
       if (config.hasOwnProperty('position')) {
         if (config.position === 'start') {
@@ -838,8 +845,7 @@ class PositionList {
           )
         }
       }
-      positions = new PositionList(currentPosition);
-      console.log("no position");
+      positions = new PositionList(currentPosition, config.position);
     }
 
     // -------------------------------------------------------------------------
@@ -1103,8 +1109,8 @@ class PositionList {
         // exit if all the animations aren't finished
         numFinished = numFinished + 1
         if (numFinished !== animations.length) return
-
-        drawPositionInstant()
+        console.log("drawPositionInstant() 11"); 
+        drawPositionInstant();
 
         // run their onMoveEnd function
         if (isFunction(config.onMoveEnd)) {
@@ -1216,6 +1222,9 @@ class PositionList {
 
     function drawPositionInstant () {
       // clear the board
+      console.log("drawPositionInstant()");
+      console.log(currentPosition);
+
       $board.find('.' + CSS.piece).remove()
 
       // add the pieces
@@ -1228,7 +1237,8 @@ class PositionList {
 
     function drawBoard () {
       $board.html(buildBoardHTML(currentOrientation, squareSize, config.showNotation))
-      drawPositionInstant()
+      console.log("drawPositionInstant() 1");
+      drawPositionInstant();
 
       if (config.sparePieces) {
 	var blackPieces = {};
@@ -1253,11 +1263,6 @@ class PositionList {
     function setCurrentPosition (position) {
       var oldPos = deepCopy(currentPosition)
       var newPos = deepCopy(position)
-      var oldFen = objToFen(oldPos)
-      var newFen = objToFen(newPos)
-
-      // do nothing if no change in position
-      if (oldFen === newFen) return
 
       // run their onChange function
       if (isFunction(config.onChange)) {
@@ -1312,6 +1317,7 @@ class PositionList {
 
       // animation complete
       function complete () {
+        console.log("drawPositionInstant() 2");
         drawPositionInstant()
         $draggedPiece.css('display', 'none')
 
@@ -1349,6 +1355,7 @@ class PositionList {
       setCurrentPosition(newPosition)
 
       // redraw the position
+      console.log("drawPositionInstant() 3");
       drawPositionInstant()
 
       // hide the dragged piece
@@ -1361,24 +1368,68 @@ class PositionList {
     function dropDraggedPieceOnSquare (square) {
       var move = '';
       if (draggedPieceSource == "spare") move = draggedPiece.charAt(1) + '@' + square;
-      else move = draggedPieceSource + '-' + square;
-      console.log("move = " + move);
-      removeSquareHighlights()
+      else if (draggedPiece.charAt(1).toUpperCase() == 'P') move = square;
+      else move = draggedPiece.charAt(1) + draggedPieceSource.charAt(0) + square;
+      processMove(move, square);
+    }
 
+    function processMove(move, square) {
+      console.log("processMove() = " + move);
+      var data = {  fen: currentFen, move: move };
+      console.log(data);
+      $.ajax({
+          url: "http://148.72.23.120:3000/chess",
+          method: "POST",
+          async: true,
+          data: JSON.stringify(data),
+          contentType: 'application/json'
+      }).done(function(html) {
+          console.log("html = " + html);
+          if (html != "false") {
+            fen = html;
+            doMove(html, square);
+          } else {
+            console.log("doMove is false");
+            doMove(false);
+          }
+      })
+    }
+
+    function updateSparePieces(fen) {
+      fen = fen.replace(/ .+$/, '')
+      var chunks = fen.split(/[\/\[\]]/)
+      config.sparePieces = chunks[8];
+    }
+
+    function doMove(fen, square) {
+      if (fen == false) {
+        console.log("drawPositionInstant() 4");
+        removeSquareHighlights()
+        isDragging = false
+	snapbackDraggedPiece();
+        return;
+      }
+      console.log("1 doMove = " + fen);
+      var c = {};
+      c.position = fen;
       // update position
-      var newPosition = deepCopy(currentPosition)
-      delete newPosition[draggedPieceSource]
-      newPosition[square] = draggedPiece
-      setCurrentPosition(newPosition)
+      var pos = fenToObj(c);
 
-      positions.insert(newPosition);
+      setCurrentPosition(pos)
+      currentFen = fen;
 
+      positions.insert(pos, fen);
+      updateSparePieces(fen);
+
+      removeSquareHighlights()
       // get target square information
       var targetSquarePosition = $('#' + squareElsIds[square]).offset()
 
       // animation complete
       function onAnimationComplete () {
-        drawPositionInstant()
+        console.log("drawPositionInstant() 5");
+        //drawPositionInstant()
+        drawBoard();
         $draggedPiece.css('display', 'none')
 
         // execute their onSnapEnd function
@@ -1542,15 +1593,28 @@ class PositionList {
     // -------------------------------------------------------------------------
     // Public Methods
     // -------------------------------------------------------------------------
-   
+    widget.reinit = function (newFen) {
+      config.position = newFen;
+      setInitialState();
+      drawBoard();
+    }
+
     widget.head = function () {
       setCurrentPosition(positions.getHead().getPosition());
-      drawPositionInstant();
+      currentFen = positions.getCurrent().getFen();
+      console.log("drawPositionInstant() 7"); 
+      updateSparePieces(currentFen);
+      drawBoard();
+      return currentFen;
     }
 
     widget.tail = function () {
       setCurrentPosition(positions.getTail().getPosition());
-      drawPositionInstant();
+      currentFen = positions.getCurrent().getFen();
+      console.log("drawPositionInstant() 8"); 
+      updateSparePieces(currentFen);
+      drawBoard();
+      return currentFen;
     }
 
     widget.next = function () {
@@ -1558,17 +1622,25 @@ class PositionList {
       var next = positions.getNext();
       if (next != null) {
         setCurrentPosition(next.getPosition());
-	drawPositionInstant();
+        currentFen = positions.getCurrent().getFen();
+        console.log("drawPositionInstant() 9"); 
+        updateSparePieces(currentFen);
+	drawBoard();
+        return currentFen;
       }
     }
 
     widget.prev = function () {
-      console.log("prev");
+      console.log("widget.prev");
       var prev = positions.getPrev();
       console.log(prev);
       if (prev != null) {
         setCurrentPosition(prev.getPosition());
-	drawPositionInstant();
+        currentFen = positions.getCurrent().getFen();
+        console.log("drawPositionInstant() 10"); 
+        updateSparePieces(currentFen);
+	drawBoard();
+        return currentFen;
       }
     }
 

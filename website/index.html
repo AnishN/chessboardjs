@@ -12,37 +12,44 @@
 </head>
 
 <body class="homepage">
-
 <div id="myBoard" style="width: 400px"></div>
 <button id="headBtn">&lt;&lt;</button>
 <button id="prevBtn">&lt;</button>
 <button id="nextBtn">&gt;</button>
 <button id="tailBtn">&gt;&gt;</button>
+<br/>
+<br/>
+<input type="text" id="fen"></input><button id="inputFen">Enter Fen</button>
 
 <script src="js/jquery-3.4.1.min.js"></script>
 <script src="js/prettify.min.js"></script>
 <script src="js/chessboard-1.0.0.js" crossorigin="anonymous"></script>
 <script>
-function init () {
-  var ruyLopez = 'r4r2/p1pb1kPp/b1p2Ppp/3pP2P/1P3P2/3N1Q1p/PPPp1PPP/R4K1R/QPPqbbnnn w KQ - 0 1';
+var fen = 'r4r2/p1pb1kPp/b1p2Ppp/3pP2P/1P3P2/3N1QPp/PPPp1P1P/R4K1R[QRNNrppp] b KQ - 0 1';
+function init (fen) {
   var board = Chessboard('myBoard', 
-	        { position: ruyLopez,
+	        { position: fen,
 		  draggable: true,
 		  dropOffBoard: 'trash',
- 	   	  sparePieces: true,
-		  
+ 	   	  sparePieces: true
 		});
 
   $('#startBtn').on('click', board.start);
   $('#clearBtn').on('click', board.clear);
-  $('#tailBtn').on('click', board.tail);
-  $('#headBtn').on('click', board.head);
-  $('#prevBtn').on('click', board.prev);
-  $('#nextBtn').on('click', board.next);
+  $('#tailBtn').on('click', function() { fen = board.tail(); });
+  $('#headBtn').on('click', function() { fen = board.head(); });
+  $('#prevBtn').on('click', function() { fen = board.prev(); console.log(fen);});
+  $('#nextBtn').on('click', function() { fen = board.next(); });
+  $('#inputFen').on('click', function() { 
+    var newFen = $("#fen").val();
+    console.log("new fen = " + newFen);
+    fen = newFen;
+    board.reinit(fen);
+  });
 }
  
 
-  $(document).ready(init)
+  $(document).ready(init(fen))
 </script>
 </body>
 </html>
